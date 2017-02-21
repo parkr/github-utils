@@ -5,54 +5,18 @@ import (
 	"flag"
 	"fmt"
 	"log"
-	"strings"
+	"net/http"
 
 	"github.com/google/go-github/github"
 	"github.com/parkr/github-utils/gh"
+	"github.com/parkr/github-utils/search"
+	"github.com/parkr/github-utils/webview"
 )
 
 func haltIfError(err error) {
 	if err != nil {
 		log.Fatalln("error:", err)
 	}
-}
-
-func repoNameFromURL(url string) string {
-	return strings.Join(
-		strings.SplitN(
-			strings.Replace(url, "https://github.com/", "", 1),
-			"/",
-			-1)[1:2],
-		"/",
-	)
-}
-
-func issuesForQuery(client *gh.Client, query string) []github.Issue {
-	results := []github.Issue{}
-
-	opts := &github.SearchOptions{
-		Sort:        "created",
-		ListOptions: github.ListOptions{PerPage: 100},
-	}
-	for {
-		searchResult, resp, err := client.Search.Issues(query, opts)
-		haltIfError(err)
-
-		// Append the results.
-		results = append(results, searchResult.Issues...)
-
-		if resp.NextPage == 0 {
-			break
-		}
-		opts.ListOptions.Page = resp.NextPage
-	}
-
-	return results
-}
-
-func findAllUnansweredMentions(client *gh.Client, user string) []github.Issue {
-	query := fmt.Sprintf("is:open mentions:%s -commenter:%s", user, user)
-	return issuesForQuery(client, query)
 }
 
 func truncate(text string, max int) string {
@@ -75,15 +39,20 @@ func printIssues(title string, issues []github.Issue) {
 }
 
 func unearthForUser(client *gh.Client, user string) {
-	// issues := findAllAssignedIssues(client, user)
-	// printIssues("assigned issues", issues)
+	issues, err := search.FindAllAssignedIssues(client, user)
+	haltIfError(err)
+	printIssues(fmt.Sprintf("issues assigned to %s", user), issues)
 
-	issues := findAllUnansweredMentions(client, user)
-	printIssues("unanswered issues", issues)
+	issues, err = search.FindAllUnansweredMentions(client, user)
+	haltIfError(err)
+	printIssues(fmt.Sprintf("unanswered issues for %s", user), issues)
 }
 
 func main() {
+	var httpBind string
+	flag.StringVar(&httpBind, "http", "", "The network binding to attach a server to. Only boots server if specified.")
 	flag.Parse()
+
 	client, err := gh.NewDefaultClient()
 	if err != nil {
 		log.Fatalf("fatal: could not initialize client: %v", err)
@@ -94,7 +63,17 @@ func main() {
 		users = flag.Args()
 	}
 
-	for _, user := range users {
-		unearthForUser(client, user)
+	if httpBind != "" {
+		handler := webview.Handler{Users: users, Client: client}
+		http.Handle("/", handler)
+		log.Println("Starting server on", httpBind)
+		if err := http.ListenAndServe(httpBind, nil); err != nil {
+			log.Fatalln(err)
+		}
+	} else {
+		// Print to stdout.
+		for _, user := range users {
+			unearthForUser(client, user)
+		}
 	}
 }
