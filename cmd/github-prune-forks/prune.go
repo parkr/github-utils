@@ -1,14 +1,19 @@
 package main
 
 import (
+	"context"
 	"fmt"
 	"log"
+	"time"
 
 	"github.com/google/go-github/github"
 	"github.com/parkr/github-utils/gh"
 )
 
 func processRepos(client *gh.Client, repos []*github.Repository) {
+	ctx, cancel := context.WithTimeout(client.Context, 5*time.Second)
+	defer cancel()
+
 	for _, repo := range repos {
 		if *repo.Fork {
 			if repo.Description != nil {
@@ -23,7 +28,7 @@ func processRepos(client *gh.Client, repos []*github.Repository) {
 				log.Fatalln(err)
 			}
 			if response == "y" {
-				_, err := client.Repositories.Delete(*repo.Owner.Login, *repo.Name)
+				_, err := client.Repositories.Delete(ctx, *repo.Owner.Login, *repo.Name)
 				if err != nil {
 					log.Printf("error: %v", err)
 				} else {
@@ -42,11 +47,14 @@ func main() {
 		log.Fatalf("fatal: could not initialize client: %v", err)
 	}
 
+	ctx, cancel := context.WithTimeout(client.Context, 5*time.Second)
+	defer cancel()
+
 	opt := &github.RepositoryListOptions{
 		ListOptions: github.ListOptions{PerPage: 100},
 	}
 	for {
-		repos, resp, err := client.Repositories.List(client.Login, opt)
+		repos, resp, err := client.Repositories.List(ctx, client.Login, opt)
 		if err != nil {
 			log.Fatalf("fatal: %v", err)
 		}

@@ -1,9 +1,11 @@
 package search
 
 import (
+	"context"
 	"fmt"
 	"log"
 	"strings"
+	"time"
 
 	"github.com/google/go-github/github"
 	"github.com/parkr/github-utils/gh"
@@ -11,6 +13,9 @@ import (
 
 func SearchIssues(client *gh.Client, query string) ([]github.Issue, error) {
 	results := []github.Issue{}
+
+	ctx, cancel := context.WithTimeout(client.Context, time.Second)
+	defer cancel()
 
 	input := make(chan github.Issue, 100)
 	queue := make(chan github.Issue, 100)
@@ -22,7 +27,7 @@ func SearchIssues(client *gh.Client, query string) ([]github.Issue, error) {
 		ListOptions: github.ListOptions{PerPage: 100},
 	}
 	for {
-		searchResult, resp, err := client.Search.Issues(query, opts)
+		searchResult, resp, err := client.Search.Issues(ctx, query, opts)
 		if err != nil {
 			log.Printf("error issuing query '%s': %+v", query, err)
 			close(input)

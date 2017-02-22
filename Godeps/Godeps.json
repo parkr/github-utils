@@ -1,6 +1,34 @@
 {
 	"ImportPath": "github.com/parkr/github-utils",
-	"GoVersion": "go1.7",
-	"GodepVersion": "v74",
-	"Deps": []
+	"GoVersion": "go1.8",
+	"GodepVersion": "v79",
+	"Packages": [
+		"./..."
+	],
+	"Deps": [
+		{
+			"ImportPath": "github.com/bgentry/go-netrc/netrc",
+			"Rev": "9fd32a8b3d3d3f9d43c341bfe098430e07609480"
+		},
+		{
+			"ImportPath": "github.com/google/go-github/github",
+			"Rev": "23d6cb9cacb5aa314e93d600fe20a48496a718d4"
+		},
+		{
+			"ImportPath": "github.com/google/go-querystring/query",
+			"Rev": "53e6ce116135b80d037921a7fdd5138cf32d7a8a"
+		},
+		{
+			"ImportPath": "golang.org/x/net/context",
+			"Rev": "007e530097ad7f954752df63046b4036f98ba6a6"
+		},
+		{
+			"ImportPath": "golang.org/x/oauth2",
+			"Rev": "314dd2c0bf3ebd592ec0d20847d27e79d0dbe8dd"
+		},
+		{
+			"ImportPath": "golang.org/x/oauth2/internal",
+			"Rev": "314dd2c0bf3ebd592ec0d20847d27e79d0dbe8dd"
+		}
+	]
 }

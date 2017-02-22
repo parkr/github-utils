@@ -1,6 +1,7 @@
 package gh
 
 import (
+	"context"
 	"fmt"
 	"os"
 
@@ -15,6 +16,7 @@ var netrcMachines = []string{"api.github.com", "github.com"}
 type Client struct {
 	*netrc.Machine
 	*github.Client
+	Context context.Context
 }
 
 func getLogin() (*netrc.Machine, error) {
@@ -47,5 +49,6 @@ func NewDefaultClient() (*Client, error) {
 	return &Client{
 		machine,
 		github.NewClient(tc),
+		context.Background(),
 	}, nil
 }
