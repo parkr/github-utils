@@ -12,7 +12,7 @@
 		},
 		{
 			"ImportPath": "github.com/google/go-github/github",
-			"Rev": "23d6cb9cacb5aa314e93d600fe20a48496a718d4"
+			"Rev": "6d87e6ecefb23287203efc7b867f929ccb5a9375"
 		},
 		{
 			"ImportPath": "github.com/google/go-querystring/query",
