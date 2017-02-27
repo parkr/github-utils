@@ -3,6 +3,7 @@ package gh
 import (
 	"context"
 	"fmt"
+	"log"
 	"os"
 
 	"github.com/bgentry/go-netrc/netrc"
@@ -17,6 +18,8 @@ type Client struct {
 	*netrc.Machine
 	*github.Client
 	Context context.Context
+
+	currentlyAuthedGitHubUser *github.User
 }
 
 func getLogin() (*netrc.Machine, error) {
@@ -50,5 +53,19 @@ func NewDefaultClient() (*Client, error) {
 		machine,
 		github.NewClient(tc),
 		context.Background(),
+		nil,
 	}, nil
+}
+
+func (c *Client) CurrentGitHubUser() *github.User {
+	if c.currentlyAuthedGitHubUser == nil {
+		currentlyAuthedUser, _, err := c.Users.Get(c.Context, "")
+		if err != nil {
+			log.Printf("couldn't fetch currently-auth'd user: %v", err)
+			return nil
+		}
+		c.currentlyAuthedGitHubUser = currentlyAuthedUser
+	}
+
+	return c.currentlyAuthedGitHubUser
 }

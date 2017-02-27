@@ -41,7 +41,7 @@ func FetchPullRequests(client *gh.Client, repo string, input chan *github.PullRe
 	return nil
 }
 
-func CachePullRequestsLocally(client *gh.Client, outputDir string, input chan []*github.PullRequest, output chan OfflineStatusResponse) {
+func CachePullRequestsLocally(client *gh.Client, outputDir, repo string, input chan []*github.PullRequest, output chan OfflineStatusResponse) {
 	bridge := make(chan OfflineStatusResponse, 1000)
 	counter := 0
 
@@ -51,7 +51,7 @@ func CachePullRequestsLocally(client *gh.Client, outputDir string, input chan []
 		counter += len(prs)
 		go func(prs []*github.PullRequest, bridge chan OfflineStatusResponse) {
 			for _, pr := range prs {
-				bridge <- WritePullRequest(client, outputDir, pr)
+				bridge <- WritePullRequest(client, outputDir, repo, pr)
 			}
 		}(prs, bridge)
 	}
@@ -68,4 +68,52 @@ func CachePullRequestsLocally(client *gh.Client, outputDir string, input chan []
 	}
 	close(bridge)
 	close(output)
+}
+
+func GetPullRequestComments(client *gh.Client, owner, repoName string, number int) ([]*github.IssueComment, error) {
+	comments, nwo := []*github.IssueComment{}, owner+"/"+repoName
+	opts := &github.IssueListCommentsOptions{
+		Sort:        "created",
+		Direction:   "asc",
+		ListOptions: github.ListOptions{PerPage: 100},
+	}
+	for {
+		apiComments, resp, err := client.Issues.ListComments(client.Context, owner, repoName, number, opts)
+		if err != nil {
+			log.Printf("error fetching PR line comments for '%s': %+v", nwo, err)
+			return nil, err
+		}
+
+		comments = append(comments, apiComments...)
+
+		if resp.NextPage == 0 {
+			break
+		}
+		opts.ListOptions.Page = resp.NextPage
+	}
+	return comments, nil
+}
+
+func GetPullRequestLineComments(client *gh.Client, owner, repoName string, number int) ([]*github.PullRequestComment, error) {
+	comments, nwo := []*github.PullRequestComment{}, owner+"/"+repoName
+	opts := &github.PullRequestListCommentsOptions{
+		Sort:        "created",
+		Direction:   "asc",
+		ListOptions: github.ListOptions{PerPage: 100},
+	}
+	for {
+		apiComments, resp, err := client.PullRequests.ListComments(client.Context, owner, repoName, number, opts)
+		if err != nil {
+			log.Printf("error fetching PR line comments for '%s': %+v", nwo, err)
+			return nil, err
+		}
+
+		comments = append(comments, apiComments...)
+
+		if resp.NextPage == 0 {
+			break
+		}
+		opts.ListOptions.Page = resp.NextPage
+	}
+	return comments, nil
 }

@@ -8,6 +8,7 @@ import (
 	"os"
 	"path/filepath"
 	"sort"
+	"strings"
 	"time"
 
 	"github.com/google/go-github/github"
@@ -30,8 +31,8 @@ func (c Comments) Less(i, j int) bool { return c[i].CreatedAt.Before(c[j].Create
 func (c Comments) Swap(i, j int)      { c[i], c[j] = c[j], c[i] }
 
 type Comment struct {
-	Name, Username, Subject, Message string
-	CreatedAt                        time.Time
+	To, Name, Username, Subject, Message string
+	CreatedAt                            time.Time
 }
 
 func (c Comment) Email() string {
@@ -44,13 +45,13 @@ func (c Comment) Email() string {
 //           - Username of author
 //           - PR reviews & comments
 //           - PR comment chain
-func WritePullRequest(client *gh.Client, outputDir string, pr *github.PullRequest) OfflineStatusResponse {
+func WritePullRequest(client *gh.Client, outputDir string, repo string, pr *github.PullRequest) OfflineStatusResponse {
 	patchFilename, err := WritePatchFile(client, outputDir, pr)
 	if err != nil {
 		return OfflineStatusResponse{Success: false, Error: err, Filename: patchFilename, Number: *pr.Number}
 	}
 
-	metadataFilename, err := WriteMetadataFile(client, outputDir, pr)
+	metadataFilename, err := WriteMetadataFile(client, outputDir, repo, pr)
 	if err != nil {
 		return OfflineStatusResponse{Success: false, Error: err, Filename: metadataFilename, Number: *pr.Number}
 	}
@@ -77,7 +78,7 @@ func WritePatchFile(client *gh.Client, outputDir string, pr *github.PullRequest)
 }
 
 // Writes a file containing metadata for
-func WriteMetadataFile(client *gh.Client, outputDir string, pr *github.PullRequest) (string, error) {
+func WriteMetadataFile(client *gh.Client, outputDir string, repo string, pr *github.PullRequest) (string, error) {
 	metadataFilename := filepath.Join(outputDir, fmt.Sprintf("%d.mbox", *pr.Number))
 
 	f, err := os.OpenFile(metadataFilename, os.O_RDWR|os.O_CREATE|os.O_APPEND, 0600)
@@ -87,9 +88,24 @@ func WriteMetadataFile(client *gh.Client, outputDir string, pr *github.PullReque
 	defer f.Close()
 
 	comments := Comments{}
+	pieces := strings.Split(repo, "/")
+	owner, repoName := pieces[0], pieces[1]
+
+	var to string
+	if hostname, err := os.Hostname(); err == nil {
+		to += hostname
+	} else {
+		to += "localhost"
+	}
+	if currentUser := client.CurrentGitHubUser(); currentUser != nil {
+		to = *currentUser.Login + "@" + to
+	} else {
+		to = "mbox@" + to
+	}
 
 	// Add the PR
 	comments = append(comments, Comment{
+		To:        to,
 		Name:      userName(pr.User),
 		Username:  *pr.User.Login,
 		Subject:   *pr.Title,
@@ -97,7 +113,32 @@ func WriteMetadataFile(client *gh.Client, outputDir string, pr *github.PullReque
 		CreatedAt: *pr.CreatedAt,
 	})
 
-	// Sort the comments by CreatedAt
+	// Fetch the comments in the PR
+	issueComments, err := GetPullRequestComments(client, owner, repoName, *pr.Number)
+	for _, comment := range issueComments {
+		comments = append(comments, Comment{
+			To:        to,
+			Name:      userName(comment.User),
+			Username:  *comment.User.Login,
+			Subject:   "Re: " + *pr.Title,
+			Message:   *comment.Body,
+			CreatedAt: *comment.CreatedAt,
+		})
+	}
+
+	// Fetch the line comments on the diff
+	//prComments, err = GetPullRequestLineComments(client,pr)
+	// for _, comment := range prComments {
+	//     comments = append(comments, Comment{
+	//         Name:      userName(comment.User),
+	//         Username:  *comment.User.Login,
+	//         Subject:   "Re: " + *pr.Title,
+	//         Message:   *comment.Body,
+	//         CreatedAt: *comment.CreatedAt,
+	//     })
+	// }
+
+	// Sort the comments by when the comment was created
 	sort.Stable(comments)
 
 	for _, comment := range comments {
@@ -113,15 +154,17 @@ func WriteMetadataFile(client *gh.Client, outputDir string, pr *github.PullReque
 func writeCommentAsMbox(comment Comment, buf io.Writer) error {
 	mailtime := comment.CreatedAt.Format("Mon Jan 2 15:04:05 2006")
 	mailtime2 := comment.CreatedAt.Format("Mon, 2 Jan 2006 15:04:05 -0700")
-	fmt.Fprintln(buf, "From "+comment.Email()+" "+mailtime)
-	fmt.Fprintln(buf, "Return-path: <"+comment.Email()+">")
-	fmt.Fprintln(buf, "Envelope-to: mbox@localhost")
-	fmt.Fprintln(buf, "Delivery-date: "+mailtime2)
-	fmt.Fprintln(buf, "From: "+comment.Email())
-	fmt.Fprintln(buf, "To: mbox@localhost")
-	fmt.Fprintln(buf, "Subject: "+comment.Subject)
-	fmt.Fprintln(buf, "Date: "+mailtime2)
-	fmt.Fprintln(buf, "\n"+comment.Message+"\n\n")
+	fmt.Fprintf(buf, "From %s %s\n", comment.Email(), mailtime)
+	fmt.Fprintf(buf, "Return-Path: <%s>\n", comment.Email())
+	fmt.Fprintf(buf, "Delivered-To: %s\n", comment.To)
+	fmt.Fprintf(buf, "Envelope-To: %s\n", comment.To)
+	fmt.Fprintf(buf, "Delivery-Date: %s\n", mailtime2)
+	fmt.Fprintf(buf, "From: %s\n", comment.Email())
+	fmt.Fprintf(buf, "To: %s\n", comment.To)
+	fmt.Fprintf(buf, "Subject: %s\n", comment.Subject)
+	fmt.Fprintf(buf, "Date: %s\n", mailtime2)
+	fmt.Fprintf(buf, "Status: RO\n")
+	fmt.Fprintf(buf, "\n%s\n\n", comment.Message)
 	return nil
 }
 
@@ -130,4 +173,12 @@ func userName(user *github.User) string {
 		return *user.Name
 	}
 	return *user.Login
+}
+
+func unifiedCommentBody(comment *github.PullRequestComment) string {
+	if comment.DiffHunk == nil {
+		return *comment.Body
+	}
+	// TODO: fix this so the diff comment makes sense
+	return *comment.DiffHunk + "\n\n" + *comment.Body
 }

@@ -74,7 +74,7 @@ func main() {
 
 	go pulls.FetchPullRequests(client, repo, input)
 	go batchPullRequests(input, bridge)
-	go pulls.CachePullRequestsLocally(client, dir, bridge, output)
+	go pulls.CachePullRequestsLocally(client, dir, repo, bridge, output)
 
 	for resp := range output {
 		if resp.Success {
