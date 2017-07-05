@@ -11,8 +11,7 @@ import (
 )
 
 func processRepos(client *gh.Client, repos []*github.Repository) {
-	ctx, cancel := context.WithTimeout(client.Context, 5*time.Second)
-	defer cancel()
+	ctx := context.Background()
 
 	for _, repo := range repos {
 		if *repo.Fork {
