@@ -47,7 +47,18 @@ func main() {
 	})
 
 	if createIssue {
-		r.Create(context.Background())
+		// Create new issue
+		newIssue, err := r.Create(context.Background())
+		if err != nil {
+			log.Fatalf("fatal: error creating radar issue %#v", err)
+		}
+		log.Println(newIssue.GetHTMLURL())
+
+		// Close the previous issue
+		err = r.ClosePrevious(context.Background())
+		if err != nil {
+			log.Fatalf("fatal: error closing previous radar issue %#v", err)
+		}
 	} else {
 		fmt.Printf("# %s\n\n\n%s\n", r.Title(), r.Body(context.Background()))
 	}

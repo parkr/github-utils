@@ -115,7 +115,6 @@ func (r *Radar) parseBodyForTasks(body string, dest map[string][]string, userOve
 	scanner := bufio.NewScanner(strings.NewReader(body))
 	uncheckedTasksUser := userOverride
 	for scanner.Scan() {
-		fmt.Println("line", scanner.Text())
 		if results := fromLineRegexp.FindStringSubmatch(scanner.Text()); len(results) >= 1 {
 			uncheckedTasksUser = results[1]
 			continue

@@ -58,6 +58,17 @@ func (r *Radar) GetPrevious(ctx context.Context) *github.Issue {
 	return r.previous
 }
 
+func (r *Radar) ClosePrevious(ctx context.Context) error {
+	if r.previous == nil {
+		return nil
+	}
+
+	_, _, err := r.github.Issues.Edit(ctx, r.repoOwner, r.repoName, r.previous.GetNumber(), &github.IssueRequest{
+		State: github.String("closed"),
+	})
+	return err
+}
+
 func (r *Radar) Title() string {
 	return "Radar: Week of " + time.Now().Format("2006-01-02")
 }
@@ -80,10 +91,13 @@ func (r *Radar) Body(ctx context.Context) string {
 }
 
 func (r *Radar) Create(ctx context.Context) (*github.Issue, error) {
-	r.github.Issues.Create(ctx, r.repoOwner, r.repoName, &github.IssueRequest{
+	// Make sure we populate the previous issue so we can close it later.
+	r.GetPrevious(ctx)
+
+	issue, _, err := r.github.Issues.Create(ctx, r.repoOwner, r.repoName, &github.IssueRequest{
 		Title:  github.String(r.Title()),
 		Body:   github.String(r.Body(ctx)),
 		Labels: &[]string{"radar"},
 	})
-	return nil, nil
+	return issue, err
 }
