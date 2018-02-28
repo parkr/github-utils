@@ -76,37 +76,37 @@ func (c *contributionsTracker) String() (string, error) {
 
 func (c *contributionsTracker) addPushedPRs(buf io.Writer) error {
 	return c.addIssues(buf, "Pushed",
-		fmt.Sprintf("created:>%s %s author:%s type:pr state:open", c.startDate, c.owner, c.login),
+		fmt.Sprintf("created:>=%s %s author:%s type:pr state:open", c.startDate, c.owner, c.login),
 		nil,
 	)
 }
 
 func (c *contributionsTracker) addShippedPRs(buf io.Writer) error {
 	return c.addIssues(buf, "Shipped",
-		fmt.Sprintf("created:>%s %s author:%s type:pr state:closed", c.startDate, c.owner, c.login),
+		fmt.Sprintf("created:>=%s %s author:%s type:pr state:closed", c.startDate, c.owner, c.login),
 		func(issue github.Issue) bool {
-			return issue.ClosedAt.After(c.startDateAsTime)
+			return c.gteStartTime(issue.ClosedAt)
 		},
 	)
 }
 
 func (c *contributionsTracker) addTrackedIssues(buf io.Writer) error {
 	return c.addIssues(buf, "Tracked",
-		fmt.Sprintf("created:>%s %s author:%s type:issue", c.startDate, c.owner, c.login),
+		fmt.Sprintf("created:>=%s %s author:%s type:issue", c.startDate, c.owner, c.login),
 		nil,
 	)
 }
 
 func (c *contributionsTracker) addContributedIssues(buf io.Writer) error {
 	return c.addIssues(buf, "Contributed",
-		fmt.Sprintf("updated:>%s %s commenter:%s type:issue", c.startDate, c.owner, c.login),
+		fmt.Sprintf("updated:>=%s %s commenter:%s type:issue", c.startDate, c.owner, c.login),
 		c.commentedInLastWeek,
 	)
 }
 
 func (c *contributionsTracker) addReviewedPRs(buf io.Writer) error {
 	return c.addIssues(buf, "Reviewed",
-		fmt.Sprintf("updated:>%s %s commenter:%s type:pr", c.startDate, c.owner, c.login),
+		fmt.Sprintf("updated:>=%s %s commenter:%s type:pr", c.startDate, c.owner, c.login),
 		c.commentedInLastWeek,
 	)
 }
@@ -183,7 +183,7 @@ func (c *contributionsTracker) commentedInLastWeek(issue github.Issue) bool {
 	}
 
 	// Issue was created in duration of interest, so all comments were too
-	if issue.CreatedAt.After(c.startDateAsTime) {
+	if c.gteStartTime(issue.CreatedAt) {
 		return true
 	}
 
@@ -220,7 +220,7 @@ func (c *contributionsTracker) issueCommentsSinceStartDate(issue github.Issue) b
 		)
 		if err == nil {
 			for _, comment := range comments {
-				if comment.User.GetLogin() == c.login && comment.CreatedAt.After(c.startDateAsTime) {
+				if comment.User.GetLogin() == c.login && c.gteStartTime(comment.CreatedAt) {
 					return true
 				}
 			}
@@ -254,7 +254,7 @@ func (c *contributionsTracker) prReviewCommentsSinceStartDate(issue github.Issue
 		)
 		if err == nil {
 			for _, comment := range comments {
-				if comment.User.GetLogin() == c.login && comment.CreatedAt.After(c.startDateAsTime) {
+				if comment.User.GetLogin() == c.login && c.gteStartTime(comment.CreatedAt) {
 					return true
 				}
 			}
@@ -266,6 +266,10 @@ func (c *contributionsTracker) prReviewCommentsSinceStartDate(issue github.Issue
 	}
 
 	return false
+}
+
+func (c *contributionsTracker) gteStartTime(date *time.Time) bool {
+	return date.After(c.startDateAsTime) || date.Equal(c.startDateAsTime)
 }
 
 func repoNwo(issue github.Issue) (string, string) {
