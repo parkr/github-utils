@@ -83,7 +83,7 @@ func (c *contributionsTracker) addPushedPRs(buf io.Writer) error {
 
 func (c *contributionsTracker) addShippedPRs(buf io.Writer) error {
 	return c.addIssues(buf, "Shipped",
-		fmt.Sprintf("created:>=%s %s author:%s type:pr state:closed", c.startDate, c.owner, c.login),
+		fmt.Sprintf("updated:>=%s %s author:%s type:pr state:closed", c.startDate, c.owner, c.login),
 		func(issue github.Issue) bool {
 			return c.gteStartTime(issue.ClosedAt)
 		},
