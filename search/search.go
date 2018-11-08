@@ -14,7 +14,7 @@ import (
 func SearchIssues(client *gh.Client, query string) ([]github.Issue, error) {
 	results := []github.Issue{}
 
-	ctx, cancel := context.WithTimeout(client.Context, time.Second)
+	ctx, cancel := context.WithTimeout(client.Context, 10*time.Second)
 	defer cancel()
 
 	input := make(chan github.Issue, 100)
