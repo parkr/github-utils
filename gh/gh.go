@@ -5,14 +5,28 @@ import (
 	"fmt"
 	"log"
 	"os"
+	"path/filepath"
+
+	"gopkg.in/yaml.v2"
 
 	"github.com/bgentry/go-netrc/netrc"
 	"github.com/google/go-github/github"
 	"golang.org/x/oauth2"
 )
 
-var netrcFile = os.Getenv("HOME") + "/.netrc"
+var netrcFile = filepath.Join(os.Getenv("HOME"), ".netrc")
 var netrcMachines = []string{"api.github.com", "github.com"}
+var hubConfigFile = filepath.Join(os.Getenv("HOME"), ".config", "hub")
+
+type githubConnectionInfo struct {
+	User       string `yaml:"user"`
+	OauthToken string `yaml:"oauth_token"`
+	Protocol   string `yaml:"protocol"`
+}
+
+type hubConfig struct {
+	GitHub []githubConnectionInfo `yaml:"github.com"`
+}
 
 type Client struct {
 	*netrc.Machine
@@ -22,20 +36,55 @@ type Client struct {
 	currentlyAuthedGitHubUser *github.User
 }
 
-func getLogin() (*netrc.Machine, error) {
+func loginFromNetrc(rc *netrc.Netrc) (*netrc.Machine, error) {
+	for _, machineName := range netrcMachines {
+		machine := rc.FindMachine(machineName)
+		if machine != nil && !machine.IsDefault() {
+			return machine, nil
+		}
+	}
+	return nil, fmt.Errorf("no config for any of: %s", netrcMachines)
+}
+
+func loginFromNetrcFile() (*netrc.Machine, error) {
 	rc, err := netrc.ParseFile(netrcFile)
 	if err != nil {
 		return nil, err
 	}
 
-	for _, machineName := range netrcMachines {
-		machine := rc.FindMachine(machineName)
-		if !machine.IsDefault() {
-			return machine, nil
-		}
+	return loginFromNetrc(rc)
+}
+
+func loginFromHubConfigFile() (*netrc.Machine, error) {
+	f, err := os.Open(hubConfigFile)
+	if err != nil {
+		return nil, err
 	}
 
-	return nil, fmt.Errorf("no netrc config for any of: %s", netrcMachines)
+	cfg := &hubConfig{}
+	yaml.NewDecoder(f).Decode(cfg)
+	if len(cfg.GitHub) == 0 {
+		return nil, fmt.Errorf("no config present in: %s", hubConfigFile)
+	}
+
+	rc := &netrc.Netrc{}
+	for _, siteConf := range cfg.GitHub {
+		rc.NewMachine("github.com", siteConf.User, siteConf.OauthToken, "")
+	}
+
+	return loginFromNetrc(rc)
+}
+
+func getLogin() (*netrc.Machine, error) {
+	if machine, _ := loginFromNetrcFile(); machine != nil {
+		return machine, nil
+	}
+
+	if machine, _ := loginFromHubConfigFile(); machine != nil {
+		return machine, nil
+	}
+
+	return nil, fmt.Errorf("github login missing from %s and %s", netrcFile, hubConfigFile)
 }
 
 func NewDefaultClient() (*Client, error) {
