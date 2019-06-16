@@ -118,3 +118,18 @@ func (c *Client) CurrentGitHubUser() *github.User {
 
 	return c.currentlyAuthedGitHubUser
 }
+
+// GetFileContents fetches a single file and returns its contents.
+func (c *Client) GetFileContents(repoOwner, repoName, filename string) (string, error) {
+	// Check Dockerfile
+	contentInfo, _, resp, err := c.Repositories.GetContents(c.Context, repoOwner, repoName, filename, nil)
+	if err != nil {
+		// Allow 404's to pass through.
+		if resp.StatusCode == 404 {
+			return "", nil
+		}
+		return "", err
+	}
+
+	return contentInfo.GetContent()
+}
