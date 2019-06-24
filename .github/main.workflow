@@ -1,9 +1,9 @@
 workflow "Build on push" {
   on = "push"
-  resolves = ["make"]
+  resolves = ["docker build"]
 }
 
-action "make" {
-  uses = "parkr/actions/docker-make@master"
-  args = ["make"]
+action "docker build" {
+  uses = "actions/docker/cli@master"
+  args = ["build", "."]
 }
