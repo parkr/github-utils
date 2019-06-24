@@ -5,3 +5,6 @@ build:
 
 test:
 	go test github.com/parkr/github-utils/...
+
+docker-build:
+	docker build -t parkr/github-utils .
