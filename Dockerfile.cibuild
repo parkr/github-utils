@@ -1,3 +1,0 @@
-FROM golang
-WORKDIR /go/src/github.com/parkr/github-utils
-COPY . /go/src/github.com/parkr/github-utils
