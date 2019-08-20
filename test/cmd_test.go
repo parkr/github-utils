@@ -27,8 +27,12 @@ func getAllCommands() []string {
 
 func TestCmdHasReadme(t *testing.T) {
 	for _, command := range getAllCommands() {
-		if _, err := os.Stat(filepath.Join(command, "/README.md")); err != nil {
+		f, err := os.Stat(filepath.Join("../cmd", command, "README.md"))
+		if err != nil {
 			t.Errorf("expected a readme to exist for %s, but got error: %+v", command, err)
+		}
+		if f != nil && f.Size() == 0 {
+			t.Errorf("expected a readme to exist for %s, but it's empty", command)
 		}
 	}
 }

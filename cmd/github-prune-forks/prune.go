@@ -2,6 +2,7 @@ package main
 
 import (
 	"context"
+	"flag"
 	"fmt"
 	"log"
 	"time"
@@ -41,12 +42,14 @@ func processRepos(client *gh.Client, repos []*github.Repository) {
 }
 
 func main() {
+	flag.Parse()
+
 	client, err := gh.NewDefaultClient()
 	if err != nil {
 		log.Fatalf("fatal: could not initialize client: %v", err)
 	}
 
-	ctx, cancel := context.WithTimeout(client.Context, 5*time.Second)
+	ctx, cancel := context.WithTimeout(client.Context, 5*time.Minute)
 	defer cancel()
 
 	opt := &github.RepositoryListOptions{
