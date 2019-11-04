@@ -9,4 +9,4 @@ jobs:
     - name: Build & Test
       uses: parkr/actions/docker-make@master
       with:
-        args: build -e REV=${{ github.sha }}
+        args: docker-build -e REV=${{ github.sha }}
