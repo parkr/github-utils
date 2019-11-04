@@ -1,17 +1,18 @@
 package pulls
 
 import (
+	"bytes"
 	"fmt"
 	"io"
 	"io/ioutil"
+	"log"
 	"net/http"
 	"os"
-	"path/filepath"
 	"sort"
 	"strings"
 	"time"
 
-	"github.com/google/go-github/github"
+	"github.com/laochailan/barely/maildir"
 	"github.com/parkr/github-utils/gh"
 )
 
@@ -36,7 +37,7 @@ type Comment struct {
 }
 
 func (c Comment) Email() string {
-	return c.Username + "@github"
+	return c.Username + "@users.noreply.github.com"
 }
 
 // Writes a single pull request data on the local disk. It pulls down:
@@ -45,48 +46,39 @@ func (c Comment) Email() string {
 //           - Username of author
 //           - PR reviews & comments
 //           - PR comment chain
-func WritePullRequest(client *gh.Client, outputDir string, repo string, pr *github.PullRequest) OfflineStatusResponse {
-	patchFilename, err := WritePatchFile(client, outputDir, pr)
+func WritePullRequest(client *gh.Client, mailbox *maildir.Dir, repo string, pr PullRequest) OfflineStatusResponse {
+	messages, err := WriteMaildirMessages(client, mailbox, repo, pr)
 	if err != nil {
-		return OfflineStatusResponse{Success: false, Error: err, Filename: patchFilename, Number: *pr.Number}
+		return OfflineStatusResponse{Success: false, Error: err, Filename: "", Number: int(pr.Number)}
 	}
 
-	metadataFilename, err := WriteMetadataFile(client, outputDir, repo, pr)
-	if err != nil {
-		return OfflineStatusResponse{Success: false, Error: err, Filename: metadataFilename, Number: *pr.Number}
-	}
-
-	return OfflineStatusResponse{Success: true, Error: nil, Filename: patchFilename, Number: *pr.Number}
+	filename, _ := messages[0].Filename()
+	return OfflineStatusResponse{Success: true, Error: nil, Filename: filename, Number: int(pr.Number)}
 }
 
 // Copies the content of the Patch URL for the PR down to a local file called <prNumber>.patch.
-func WritePatchFile(client *gh.Client, outputDir string, pr *github.PullRequest) (string, error) {
-	patchFilename := filepath.Join(outputDir, fmt.Sprintf("%d.patch", *pr.Number))
+func GetPatch(client *gh.Client, pr PullRequest) (string, error) {
+	patchURL := fmt.Sprintf("%s.patch", pr.Url)
 
-	resp, err := http.Get(*pr.PatchURL)
+	req, _ := http.NewRequest("GET", patchURL, nil)
+	req.Header.Set("Authorization", "bearer "+client.Token)
+
+	resp, err := client.HTTP.Do(req)
 	if err != nil {
-		return patchFilename, err
+		return "", err
+	}
+	if resp.StatusCode != http.StatusOK {
+		return "", fmt.Errorf("bad response from %q: %s", patchURL, resp.Status)
 	}
 
 	patchContents, err := ioutil.ReadAll(resp.Body)
-	if err != nil {
-		return patchFilename, err
-	}
 	defer resp.Body.Close()
 
-	return patchFilename, ioutil.WriteFile(patchFilename, patchContents, 0600)
+	return string(patchContents), err
 }
 
 // Writes a file containing metadata for
-func WriteMetadataFile(client *gh.Client, outputDir string, repo string, pr *github.PullRequest) (string, error) {
-	metadataFilename := filepath.Join(outputDir, fmt.Sprintf("%d.mbox", *pr.Number))
-
-	f, err := os.OpenFile(metadataFilename, os.O_RDWR|os.O_CREATE|os.O_APPEND, 0600)
-	if err != nil {
-		return metadataFilename, err
-	}
-	defer f.Close()
-
+func WriteMaildirMessages(client *gh.Client, mailbox *maildir.Dir, repo string, pr PullRequest) ([]*maildir.Message, error) {
 	comments := Comments{}
 	pieces := strings.Split(repo, "/")
 	owner, repoName := pieces[0], pieces[1]
@@ -106,23 +98,41 @@ func WriteMetadataFile(client *gh.Client, outputDir string, repo string, pr *git
 	// Add the PR
 	comments = append(comments, Comment{
 		To:        to,
-		Name:      userName(pr.User),
-		Username:  *pr.User.Login,
-		Subject:   *pr.Title,
-		Message:   *pr.Body,
-		CreatedAt: *pr.CreatedAt,
+		Name:      userName(pr.Author),
+		Username:  userLogin(pr.Author),
+		Subject:   fmt.Sprintf("[#%d] %s", pr.Number, pr.Title),
+		Message:   string(pr.Body),
+		CreatedAt: pr.CreatedAt.Time,
 	})
 
+	// Add the patch
+	patchContents, err := GetPatch(client, pr)
+	if err != nil {
+		log.Printf("unable to fetch patch for %s/%s#%d: %+v", owner, repoName, pr.Number, err)
+	} else {
+		comments = append(comments, Comment{
+			To:        to,
+			Name:      "",
+			Username:  "",
+			Subject:   fmt.Sprintf("RE: [#%d] %s", pr.Number, pr.Title),
+			Message:   patchContents,
+			CreatedAt: time.Now(),
+		})
+	}
+
 	// Fetch the comments in the PR
-	issueComments, err := GetPullRequestComments(client, owner, repoName, *pr.Number)
+	issueComments, err := GetPullRequestComments(client, owner, repoName, int(pr.Number))
+	if err != nil {
+		log.Printf("unable to fetch PR comments for %s/%s#%d: %+v", owner, repoName, pr.Number, err)
+	}
 	for _, comment := range issueComments {
 		comments = append(comments, Comment{
 			To:        to,
-			Name:      userName(comment.User),
-			Username:  *comment.User.Login,
-			Subject:   "Re: " + *pr.Title,
-			Message:   *comment.Body,
-			CreatedAt: *comment.CreatedAt,
+			Name:      userName(comment.Author),
+			Username:  userLogin(comment.Author),
+			Subject:   fmt.Sprintf("RE: [#%d] %s", pr.Number, pr.Title),
+			Message:   string(comment.Body),
+			CreatedAt: comment.CreatedAt.Time,
 		})
 	}
 
@@ -141,13 +151,18 @@ func WriteMetadataFile(client *gh.Client, outputDir string, repo string, pr *git
 	// Sort the comments by when the comment was created
 	sort.Stable(comments)
 
+	messages := []*maildir.Message{}
 	for _, comment := range comments {
-		if err := writeCommentAsMbox(comment, f); err != nil {
-			return metadataFilename, err
+		var buf bytes.Buffer
+		_ = writeCommentAsMbox(comment, &buf)
+		msg, err := mailbox.NewMessage(buf.Bytes())
+		if err != nil {
+			return messages, err
 		}
+		messages = append(messages, msg)
 	}
 
-	return metadataFilename, nil
+	return messages, nil
 }
 
 // Write a comment to the buffer in mbox format.
@@ -168,17 +183,16 @@ func writeCommentAsMbox(comment Comment, buf io.Writer) error {
 	return nil
 }
 
-func userName(user *github.User) string {
-	if user.Name != nil {
-		return *user.Name
+func userLogin(author Author) string {
+	if author.Bot.Login != "" {
+		return string(author.Bot.Login)
 	}
-	return *user.Login
+	return string(author.User.Login)
 }
 
-func unifiedCommentBody(comment *github.PullRequestComment) string {
-	if comment.DiffHunk == nil {
-		return *comment.Body
+func userName(author Author) string {
+	if author.User.Name != nil {
+		return string(*author.User.Name)
 	}
-	// TODO: fix this so the diff comment makes sense
-	return *comment.DiffHunk + "\n\n" + *comment.Body
+	return string(author.User.Login)
 }

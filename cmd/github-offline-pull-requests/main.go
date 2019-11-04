@@ -6,7 +6,8 @@ import (
 	"log"
 	"os"
 
-	"github.com/google/go-github/github"
+	"github.com/laochailan/barely/maildir"
+
 	"github.com/parkr/github-utils/gh"
 	"github.com/parkr/github-utils/pulls"
 )
@@ -21,20 +22,20 @@ import (
 
 func writeOutputDirectory(dir string) error {
 	if _, err := os.Stat(dir); os.IsNotExist(err) {
-		return os.MkdirAll(dir, os.ModeDir&0755)
+		return os.MkdirAll(dir, 0755)
 	}
 	return nil
 }
 
-func batchPullRequests(input chan *github.PullRequest, bridge chan []*github.PullRequest) {
+func batchPullRequests(input chan pulls.PullRequest, bridge chan []pulls.PullRequest) {
 	counter := 0
-	prs := []*github.PullRequest{}
+	prs := []pulls.PullRequest{}
 	for pr := range input {
 		counter++
 		prs = append(prs, pr)
 		if counter%5 == 0 {
 			bridge <- prs
-			prs = []*github.PullRequest{}
+			prs = []pulls.PullRequest{}
 		}
 	}
 	if len(prs) > 0 {
@@ -64,17 +65,22 @@ func main() {
 		log.Fatalf("fatal: could not initialize client: %v", err)
 	}
 
-	if err = writeOutputDirectory(dir); err != nil {
-		log.Fatalf("fatal: could not write output directory %s: %+v", dir, err)
+	if err := writeOutputDirectory(dir); err != nil {
+		log.Fatalf("fatal: could not create maildir %q: %v", dir, err)
 	}
 
-	input := make(chan *github.PullRequest, 100)
-	bridge := make(chan []*github.PullRequest)
+	mailbox, err := maildir.Open(dir, true)
+	if err != nil {
+		log.Fatalf("fatal: could not create maildir %q: %v", dir, err)
+	}
+
+	input := make(chan pulls.PullRequest, 100)
+	bridge := make(chan []pulls.PullRequest)
 	output := make(chan pulls.OfflineStatusResponse)
 
 	go pulls.FetchPullRequests(client, repo, input)
 	go batchPullRequests(input, bridge)
-	go pulls.CachePullRequestsLocally(client, dir, repo, bridge, output)
+	go pulls.CachePullRequestsLocally(client, mailbox, repo, bridge, output)
 
 	for resp := range output {
 		if resp.Success {

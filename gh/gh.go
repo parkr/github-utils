@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 	"log"
+	"net/http"
 	"os"
 	"path/filepath"
 
@@ -11,6 +12,7 @@ import (
 
 	"github.com/bgentry/go-netrc/netrc"
 	"github.com/google/go-github/github"
+	"github.com/shurcooL/githubv4"
 	"golang.org/x/oauth2"
 )
 
@@ -32,6 +34,10 @@ type Client struct {
 	*netrc.Machine
 	*github.Client
 	Context context.Context
+
+	V4    *githubv4.Client
+	HTTP  *http.Client
+	Token string
 
 	currentlyAuthedGitHubUser *github.User
 }
@@ -102,6 +108,9 @@ func NewDefaultClient() (*Client, error) {
 		machine,
 		github.NewClient(tc),
 		context.Background(),
+		githubv4.NewClient(tc),
+		tc,
+		machine.Password,
 		nil,
 	}, nil
 }
