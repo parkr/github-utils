@@ -30,7 +30,7 @@
   name = "github.com/bgentry/go-netrc"
 
 [[constraint]]
-  name = "github.com/google/go-github"
+  name = "github.com/google/go-github/v28"
   version = ">= 15.0.0, < 29.0.0"
 
 [[constraint]]

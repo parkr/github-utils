@@ -19,7 +19,7 @@
 
 [[projects]]
   digest = "1:91099c6f78b1e7bdf9ed06eb4cb7f017174293a3689d76b995a06f4c8d64a7f0"
-  name = "github.com/google/go-github"
+  name = "github.com/google/go-github/v28"
   packages = ["github"]
   pruneopts = "UT"
   revision = "9686ff0746200cf521ce225525b421e13b4eac1a"
@@ -100,7 +100,7 @@
   analyzer-version = 1
   input-imports = [
     "github.com/bgentry/go-netrc/netrc",
-    "github.com/google/go-github/github",
+    "github.com/google/go-github/v28/github",
     "golang.org/x/oauth2",
     "gopkg.in/yaml.v2",
   ]

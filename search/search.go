@@ -7,7 +7,7 @@ import (
 	"strings"
 	"time"
 
-	"github.com/google/go-github/github"
+	"github.com/google/go-github/v28/github"
 	"github.com/parkr/github-utils/gh"
 )
 
