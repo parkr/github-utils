@@ -28,7 +28,7 @@ func processRepos(client *gh.Client, repos []*github.Repository, newDefaultBranc
 		} else {
 			fmt.Printf("%s\n", *repo.FullName)
 		}
-		fmt.Printf("  change default branch to %q? (y/n) > ", newDefaultBranchName)
+		fmt.Printf("  change default branch from %q to %q? (y/n) > ", repo.GetDefaultBranch(), newDefaultBranchName)
 		response := ""
 		_, err := fmt.Scanln(&response)
 		if err != nil {
@@ -50,6 +50,9 @@ func processRepos(client *gh.Client, repos []*github.Repository, newDefaultBranc
 				if _, _, err := client.Git.CreateRef(ctx, *repo.Owner.Login, *repo.Name, newRef); err != nil {
 					log.Printf("error creating branch: %v", err)
 					continue
+				}
+				if _, err := client.Git.DeleteRef(ctx, *repo.Owner.Login, *repo.Name, "refs/heads/"+repo.GetDefaultBranch()); err != nil {
+					log.Printf("error deleting old default branch: %v", err)
 				}
 			}
 			_, _, err := client.Repositories.Edit(ctx, *repo.Owner.Login, *repo.Name, &github.Repository{
