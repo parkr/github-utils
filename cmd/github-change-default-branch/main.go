@@ -19,6 +19,10 @@ func processRepos(client *gh.Client, repos []*github.Repository, newDefaultBranc
 			continue
 		}
 
+		if repo.GetArchived() {
+			continue
+		}
+
 		if repo.Description != nil {
 			fmt.Printf("%s - %s\n", *repo.FullName, *repo.Description)
 		} else {
