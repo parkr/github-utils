@@ -77,10 +77,6 @@ func main() {
 		log.Fatalf("fatal: could not initialize client: %v", err)
 	}
 
-	if *githubLogin == "" {
-		githubLogin = &client.Login
-	}
-
 	ctx, cancel := context.WithTimeout(client.Context, 5*time.Minute)
 	defer cancel()
 
@@ -95,7 +91,7 @@ func main() {
 	if githubUser.GetType() == "User" {
 		listMethod = func(ctx context.Context, login string, opts *github.ListOptions) ([]*github.Repository, *github.Response, error) {
 			return client.Repositories.List(ctx, login, &github.RepositoryListOptions{
-				Visibility:  "all",
+				Type:        "owner",
 				ListOptions: *opts,
 			})
 		}
