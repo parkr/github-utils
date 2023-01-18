@@ -13,6 +13,8 @@ import (
 	"github.com/parkr/github-utils/gh"
 )
 
+var verbose bool = false
+
 func listAllRepos(ctx context.Context, client *gh.Client, githubLogin string, repoChan chan string, done chan bool) {
 	// If org, use one method. If user, use another.
 	githubUser, _, err := client.Users.Get(ctx, githubLogin)
@@ -56,11 +58,15 @@ func listAllRepos(ctx context.Context, client *gh.Client, githubLogin string, re
 		for _, repo := range repos {
 			repo := repo
 			if repo.GetArchived() {
-				log.Printf("[%s]: archived, skipping", repo.GetFullName())
+				if verbose {
+					log.Printf("[%s]: archived, skipping", repo.GetFullName())
+				}
 				continue
 			}
 			if repo.GetFork() {
-				log.Printf("[%s]: fork, skipping", repo.GetFullName())
+				if verbose {
+					log.Printf("[%s]: fork, skipping", repo.GetFullName())
+				}
 				continue
 			}
 			// log.Printf("[%s] enqueueing", repo.GetFullName())
@@ -137,6 +143,7 @@ func dependabotAuditForRepos(ctx context.Context, client *gh.Client, githubLogin
 func main() {
 	githubLogin := flag.String("login", "", "GitHub Login (user or org) whose repos to list (default: currently-authorized user)")
 	singleRepo := flag.String("repo", "", "Single repo to audit (default: audit all repos for the login")
+	flag.BoolVar(&verbose, "verbose", false, "Enable verbose logging")
 	flag.Parse()
 
 	if githubLogin == nil || *githubLogin == "" {
