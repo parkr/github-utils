@@ -11,7 +11,7 @@ import (
 	"strings"
 	"time"
 
-	"github.com/google/go-github/v28/github"
+	"github.com/google/go-github/v50/github"
 	"github.com/parkr/github-utils/gh"
 )
 
@@ -40,11 +40,11 @@ func (c Comment) Email() string {
 }
 
 // Writes a single pull request data on the local disk. It pulls down:
-//     1. A `.patch` file for the pull request.
-//     1. A metadata file, preferably in Markdown or something human-readable.
-//           - Username of author
-//           - PR reviews & comments
-//           - PR comment chain
+//  1. A `.patch` file for the pull request.
+//  1. A metadata file, preferably in Markdown or something human-readable.
+//     - Username of author
+//     - PR reviews & comments
+//     - PR comment chain
 func WritePullRequest(client *gh.Client, outputDir string, repo string, pr *github.PullRequest) OfflineStatusResponse {
 	patchFilename, err := WritePatchFile(client, outputDir, pr)
 	if err != nil {
@@ -107,10 +107,10 @@ func WriteMetadataFile(client *gh.Client, outputDir string, repo string, pr *git
 	comments = append(comments, Comment{
 		To:        to,
 		Name:      userName(pr.User),
-		Username:  *pr.User.Login,
-		Subject:   *pr.Title,
-		Message:   *pr.Body,
-		CreatedAt: *pr.CreatedAt,
+		Username:  pr.GetUser().GetLogin(),
+		Subject:   pr.GetTitle(),
+		Message:   pr.GetBody(),
+		CreatedAt: pr.GetCreatedAt().Time,
 	})
 
 	// Fetch the comments in the PR
@@ -119,10 +119,10 @@ func WriteMetadataFile(client *gh.Client, outputDir string, repo string, pr *git
 		comments = append(comments, Comment{
 			To:        to,
 			Name:      userName(comment.User),
-			Username:  *comment.User.Login,
-			Subject:   "Re: " + *pr.Title,
-			Message:   *comment.Body,
-			CreatedAt: *comment.CreatedAt,
+			Username:  comment.GetUser().GetLogin(),
+			Subject:   "Re: " + pr.GetTitle(),
+			Message:   comment.GetBody(),
+			CreatedAt: comment.GetCreatedAt().Time,
 		})
 	}
 

@@ -7,7 +7,7 @@ import (
 	"strings"
 	"time"
 
-	"github.com/google/go-github/v28/github"
+	"github.com/google/go-github/v50/github"
 	"github.com/parkr/github-utils/gh"
 )
 
@@ -36,7 +36,7 @@ func SearchIssues(client *gh.Client, query string) ([]github.Issue, error) {
 
 		for _, issue := range searchResult.Issues {
 			issue := issue
-			input <- issue
+			input <- *issue
 		}
 
 		if resp.NextPage == 0 {

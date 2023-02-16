@@ -9,7 +9,7 @@ import (
 	"strings"
 	"time"
 
-	"github.com/google/go-github/v28/github"
+	"github.com/google/go-github/v50/github"
 	"github.com/parkr/github-utils/gh"
 	"github.com/parkr/github-utils/search"
 )
@@ -85,7 +85,7 @@ func (c *contributionsTracker) addShippedPRs(buf io.Writer) error {
 	return c.addIssues(buf, "Shipped",
 		fmt.Sprintf("updated:>=%s %s author:%s type:pr state:closed", c.startDate, c.owner, c.login),
 		func(issue github.Issue) bool {
-			return c.gteStartTime(issue.ClosedAt)
+			return c.gteStartTime(issue.GetClosedAt().Time)
 		},
 	)
 }
@@ -128,7 +128,10 @@ func (c *contributionsTracker) searchIssues(query string) ([]github.Issue, error
 			return issues, err
 		}
 
-		issues = append(issues, result.Issues...)
+		for _, issue := range result.Issues {
+			issue := issue
+			issues = append(issues, *issue)
+		}
 		if resp.NextPage == 0 {
 			break
 		}
@@ -183,7 +186,7 @@ func (c *contributionsTracker) commentedInLastWeek(issue github.Issue) bool {
 	}
 
 	// Issue was created in duration of interest, so all comments were too
-	if c.gteStartTime(issue.CreatedAt) {
+	if c.gteStartTime(issue.GetCreatedAt().Time) {
 		return true
 	}
 
@@ -203,9 +206,9 @@ func (c *contributionsTracker) commentedInLastWeek(issue github.Issue) bool {
 func (c *contributionsTracker) issueCommentsSinceStartDate(issue github.Issue) bool {
 	owner, name := repoNwo(issue)
 	options := &github.IssueListCommentsOptions{
-		Sort:      "created",
-		Direction: "asc",
-		Since:     c.startDateAsTime,
+		Sort:      github.String("created"),
+		Direction: github.String("asc"),
+		Since:     &c.startDateAsTime,
 		ListOptions: github.ListOptions{
 			Page:    0,
 			PerPage: 100,
@@ -220,7 +223,7 @@ func (c *contributionsTracker) issueCommentsSinceStartDate(issue github.Issue) b
 		)
 		if err == nil {
 			for _, comment := range comments {
-				if comment.User.GetLogin() == c.login && c.gteStartTime(comment.CreatedAt) {
+				if comment.User.GetLogin() == c.login && c.gteStartTime(comment.GetCreatedAt().Time) {
 					return true
 				}
 			}
@@ -254,7 +257,7 @@ func (c *contributionsTracker) prReviewCommentsSinceStartDate(issue github.Issue
 		)
 		if err == nil {
 			for _, comment := range comments {
-				if comment.User.GetLogin() == c.login && c.gteStartTime(comment.CreatedAt) {
+				if comment.User.GetLogin() == c.login && c.gteStartTime(comment.GetCreatedAt().Time) {
 					return true
 				}
 			}
@@ -268,7 +271,7 @@ func (c *contributionsTracker) prReviewCommentsSinceStartDate(issue github.Issue
 	return false
 }
 
-func (c *contributionsTracker) gteStartTime(date *time.Time) bool {
+func (c *contributionsTracker) gteStartTime(date time.Time) bool {
 	return date.After(c.startDateAsTime) || date.Equal(c.startDateAsTime)
 }
 

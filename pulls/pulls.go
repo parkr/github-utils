@@ -4,7 +4,7 @@ import (
 	"log"
 	"strings"
 
-	"github.com/google/go-github/v28/github"
+	"github.com/google/go-github/v50/github"
 	"github.com/parkr/github-utils/gh"
 )
 
@@ -73,8 +73,8 @@ func CachePullRequestsLocally(client *gh.Client, outputDir, repo string, input c
 func GetPullRequestComments(client *gh.Client, owner, repoName string, number int) ([]*github.IssueComment, error) {
 	comments, nwo := []*github.IssueComment{}, owner+"/"+repoName
 	opts := &github.IssueListCommentsOptions{
-		Sort:        "created",
-		Direction:   "asc",
+		Sort:        github.String("created"),
+		Direction:   github.String("asc"),
 		ListOptions: github.ListOptions{PerPage: 100},
 	}
 	for {
