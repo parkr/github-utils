@@ -7,7 +7,7 @@ import (
 	"log"
 	"time"
 
-	"github.com/google/go-github/v28/github"
+	"github.com/google/go-github/v50/github"
 	"github.com/parkr/github-utils/gh"
 )
 

@@ -7,7 +7,7 @@ import (
 	"log"
 	"time"
 
-	"github.com/google/go-github/v28/github"
+	"github.com/google/go-github/v50/github"
 	"github.com/parkr/github-utils/gh"
 )
 
@@ -37,7 +37,7 @@ func processRepos(client *gh.Client, repos []*github.Repository, newDefaultBranc
 		}
 		if response == "y" {
 			// Create branch if it doesn't exist
-			if _, _, err := client.Repositories.GetBranch(ctx, *repo.Owner.Login, *repo.Name, newDefaultBranchName); err != nil {
+			if _, _, err := client.Repositories.GetBranch(ctx, *repo.Owner.Login, *repo.Name, newDefaultBranchName, false); err != nil {
 				// We got an error, so we should create the branch.
 				oldRef, _, err := client.Git.GetRef(ctx, *repo.Owner.Login, *repo.Name, "refs/heads/"+repo.GetDefaultBranch())
 				if err != nil {

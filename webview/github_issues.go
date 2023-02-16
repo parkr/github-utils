@@ -1,7 +1,7 @@
 package webview
 
 import (
-	"github.com/google/go-github/v28/github"
+	"github.com/google/go-github/v50/github"
 )
 
 type GitHubIssues []github.Issue
@@ -17,5 +17,5 @@ func (s GitHubIssues) Swap(i, j int) {
 // Issue i comes before j if i was created after j.
 // Essentially CreatedAt descending, where the most recent is first.
 func (s GitHubIssues) Less(i, j int) bool {
-	return s[i].CreatedAt.Before(*s[j].CreatedAt)
+	return s[i].GetCreatedAt().Before(s[j].GetCreatedAt().Time)
 }
