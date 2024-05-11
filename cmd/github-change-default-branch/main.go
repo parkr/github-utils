@@ -11,6 +11,8 @@ import (
 	"github.com/parkr/github-utils/gh"
 )
 
+const maxRedirectsFetchingBranch = 1
+
 func processRepos(client *gh.Client, repos []*github.Repository, newDefaultBranchName string) {
 	ctx := context.Background()
 
@@ -37,7 +39,7 @@ func processRepos(client *gh.Client, repos []*github.Repository, newDefaultBranc
 		}
 		if response == "y" {
 			// Create branch if it doesn't exist
-			if _, _, err := client.Repositories.GetBranch(ctx, *repo.Owner.Login, *repo.Name, newDefaultBranchName, false); err != nil {
+			if _, _, err := client.Repositories.GetBranch(ctx, *repo.Owner.Login, *repo.Name, newDefaultBranchName, maxRedirectsFetchingBranch); err != nil {
 				// We got an error, so we should create the branch.
 				oldRef, _, err := client.Git.GetRef(ctx, *repo.Owner.Login, *repo.Name, "refs/heads/"+repo.GetDefaultBranch())
 				if err != nil {
