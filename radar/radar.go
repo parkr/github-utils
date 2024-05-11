@@ -8,7 +8,7 @@ import (
 
 	"github.com/parkr/github-utils/gh"
 
-	"github.com/google/go-github/v50/github"
+	"github.com/google/go-github/v62/github"
 )
 
 type RadarConfig struct {
