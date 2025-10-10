@@ -161,7 +161,7 @@ func (c *contributionsTracker) addIssues(buf io.Writer, header, query string, fi
 	fmt.Fprintf(buf, "\n### %s (%d)\n", header, len(issues))
 	for i := len(issues) - 1; i >= 0; i-- {
 
-		fmt.Fprintf(buf, c.formattedIssue(issues[i])+"\n")
+		fmt.Fprint(buf, c.formattedIssue(issues[i])+"\n")
 	}
 
 	fmt.Fprintf(buf, "\n")
