@@ -6,7 +6,7 @@ import (
 	"log"
 	"os"
 
-	"github.com/google/go-github/v62/github"
+	"github.com/google/go-github/v86/github"
 	"github.com/parkr/github-utils/gh"
 	"github.com/parkr/github-utils/pulls"
 )

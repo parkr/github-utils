@@ -83,13 +83,13 @@ func (r *Radar) PreviousTasksParagraphs(ctx context.Context) ([]string, error) {
 	previousTasks := map[string][]string{}
 
 	var data issuesAndComments
-	req, err := r.github.NewRequest("POST", "graphql", struct {
+	req, err := r.github.NewRequest(ctx, "POST", "graphql", struct {
 		Query string `json:"query"`
 	}{Query: fmt.Sprintf(graphQLQueryIssuesAndComments, r.repoOwner, r.repoName)})
 	if err != nil {
 		return []string{}, err
 	}
-	_, err = r.github.Do(ctx, req, &data)
+	_, err = r.github.Do(req, &data)
 	if err != nil {
 		return []string{}, err
 	}

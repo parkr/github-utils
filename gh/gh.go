@@ -10,7 +10,7 @@ import (
 	"gopkg.in/yaml.v2"
 
 	"github.com/bgentry/go-netrc/netrc"
-	"github.com/google/go-github/v62/github"
+	"github.com/google/go-github/v86/github"
 	"golang.org/x/oauth2"
 )
 

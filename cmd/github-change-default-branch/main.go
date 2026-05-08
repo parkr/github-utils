@@ -7,7 +7,7 @@ import (
 	"log"
 	"time"
 
-	"github.com/google/go-github/v62/github"
+	"github.com/google/go-github/v86/github"
 	"github.com/parkr/github-utils/gh"
 )
 
@@ -46,9 +46,9 @@ func processRepos(client *gh.Client, repos []*github.Repository, newDefaultBranc
 					log.Printf("error fetching old ref %q: %+v", repo.GetDefaultBranch(), err)
 					continue
 				}
-				newRef := &github.Reference{
-					Ref:    github.String("refs/heads/" + newDefaultBranchName),
-					Object: oldRef.Object,
+				newRef := github.CreateRef{
+					Ref: "refs/heads/" + newDefaultBranchName,
+					SHA: oldRef.GetObject().GetSHA(),
 				}
 				if _, _, err := client.Git.CreateRef(ctx, *repo.Owner.Login, *repo.Name, newRef); err != nil {
 					log.Printf("error creating branch: %v", err)
