@@ -1,7 +1,7 @@
 package webview
 
 import (
-	"github.com/google/go-github/v86/github"
+	"github.com/google/go-github/v88/github"
 )
 
 type GitHubIssues []github.Issue
