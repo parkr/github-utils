@@ -7,7 +7,7 @@ import (
 	"log"
 	"net/http"
 
-	"github.com/google/go-github/v86/github"
+	"github.com/google/go-github/v88/github"
 	"github.com/parkr/github-utils/gh"
 	"github.com/parkr/github-utils/search"
 	"github.com/parkr/github-utils/webview"
