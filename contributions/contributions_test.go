@@ -3,7 +3,7 @@ package contributions
 import (
 	"testing"
 
-	"github.com/google/go-github/v86/github"
+	"github.com/google/go-github/v88/github"
 )
 
 func TestRepoNwo(t *testing.T) {
